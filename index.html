@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>NODE // TELEMETRY LIVE</title>
+  <title>MULTI-DEVICE // TELEMETRY LIVE</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -13,142 +13,183 @@
       background-color: #07090e;
       color: #e2e8f0;
       font-family: 'Inter', sans-serif;
-      background-image: radial-gradient(circle at 15% 15%, rgba(16, 185, 129, 0.06), transparent 35%),
-                        radial-gradient(circle at 85% 85%, rgba(59, 130, 246, 0.06), transparent 35%);
+      background-image: radial-gradient(circle at 12% 12%, rgba(16, 185, 129, 0.07), transparent 35%),
+                        radial-gradient(circle at 88% 85%, rgba(99, 102, 241, 0.08), transparent 35%);
     }
     .mono { font-family: 'JetBrains Mono', monospace; }
     .glass {
-      background: rgba(15, 20, 30, 0.72);
+      background: rgba(15, 20, 30, 0.74);
       backdrop-filter: blur(14px);
       border: 1px solid rgba(255, 255, 255, 0.07);
-      box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.7);
+      box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.75);
     }
-    .glow-green { box-shadow: 0 0 14px rgba(16, 185, 129, 0.45); }
-    .glow-red { box-shadow: 0 0 14px rgba(239, 68, 68, 0.45); }
+    .device-tile {
+      transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .device-tile:hover {
+      transform: translateY(-2px);
+      border-color: rgba(56, 189, 248, 0.45);
+    }
+    .device-selected {
+      border-color: rgba(16, 185, 129, 0.75) !important;
+      box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.45), 0 14px 32px -12px rgba(16, 185, 129, 0.25);
+    }
   </style>
 </head>
 <body class="min-h-screen p-4 md:p-6">
   <div class="max-w-7xl mx-auto space-y-6">
-    <!-- Top Header -->
+    <!-- Top Bar -->
     <header class="glass rounded-2xl px-6 py-4 flex flex-wrap items-center justify-between gap-4">
-      <div class="flex items-center gap-3">
-        <div id="statusDot" class="w-3 h-3 rounded-full bg-red-500 glow-red transition-all"></div>
-        <div>
-          <h1 class="text-lg font-bold tracking-wide text-white flex items-center gap-2">
-            DEVICE TELEMETRY
-            <span id="deviceBadge" class="mono text-xs px-2.5 py-0.5 rounded-md bg-slate-800 text-emerald-400 border border-emerald-500/20">OFFLINE</span>
-          </h1>
-          <p class="text-xs text-slate-400 mono" id="subStatus">Waiting for Termux agent stream...</p>
-        </div>
+      <div>
+        <h1 class="text-lg font-bold tracking-wide text-white">MULTI-DEVICE TELEMETRY GRID</h1>
+        <p class="text-xs text-slate-400 mono">Click any device cell to inspect live screen, chart &amp; logs</p>
       </div>
 
       <div class="flex items-center gap-6 mono text-xs">
         <div>
-          <span class="text-slate-500 block">UPTIME</span>
-          <span id="uptimeVal" class="text-slate-200 font-semibold">--</span>
-        </div>
-        <div>
-          <span class="text-slate-500 block">STREAM FPS</span>
-          <span id="fpsVal" class="text-cyan-400 font-semibold">0.0 FPS</span>
+          <span class="text-slate-500 block">ONLINE / TOTAL</span>
+          <span id="deviceCountVal" class="text-emerald-400 font-semibold">0 / 0</span>
         </div>
         <div>
           <span class="text-slate-500 block">ALERT RULE</span>
           <span class="text-amber-400 font-semibold">&lt;50% | &gt;90%</span>
         </div>
+        <div>
+          <span class="text-slate-500 block">SELECTED</span>
+          <span id="selectedIdHeader" class="text-cyan-400 font-semibold">NONE</span>
+        </div>
       </div>
     </header>
 
-    <!-- Main Grid -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-      <!-- Left Metrics & Charts -->
-      <div class="lg:col-span-7 space-y-6">
-        <!-- Stat Cards -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <!-- CPU Card -->
-          <div class="glass rounded-2xl p-5 relative overflow-hidden">
-            <div class="flex justify-between items-start">
-              <div>
-                <p class="text-xs uppercase tracking-wider text-slate-400 font-semibold">CPU Load</p>
-                <h2 id="cpuText" class="text-4xl font-bold mono text-white mt-1">0.0%</h2>
-              </div>
-              <span id="cpuAlertBadge" class="mono text-[11px] px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">NOMINAL</span>
-            </div>
-            <div class="w-full bg-slate-800/80 h-2 rounded-full mt-4 overflow-hidden">
-              <div id="cpuBar" class="h-full bg-gradient-to-r from-emerald-400 to-cyan-400 transition-all duration-300" style="width: 0%"></div>
-            </div>
-          </div>
-
-          <!-- RAM Card -->
-          <div class="glass rounded-2xl p-5 relative overflow-hidden">
-            <div class="flex justify-between items-start">
-              <div>
-                <p class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Memory (RAM)</p>
-                <h2 id="ramText" class="text-4xl font-bold mono text-white mt-1">0.0%</h2>
-              </div>
-              <span id="ramDetail" class="mono text-xs text-slate-400">0 / 0 MB</span>
-            </div>
-            <div class="w-full bg-slate-800/80 h-2 rounded-full mt-4 overflow-hidden">
-              <div id="ramBar" class="h-full bg-gradient-to-r from-blue-500 to-indigo-400 transition-all duration-300" style="width: 0%"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Realtime Chart -->
-        <div class="glass rounded-2xl p-5">
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="text-sm font-semibold text-slate-200 tracking-wide">REAL-TIME RESOURCE TELEMETRY</h3>
-            <span class="mono text-xs text-slate-500">60s Rolling Window</span>
-          </div>
-          <div class="h-64">
-            <canvas id="telemetryChart"></canvas>
-          </div>
-        </div>
-
-        <!-- Event Log -->
-        <div class="glass rounded-2xl p-5">
-          <h3 class="text-sm font-semibold text-slate-200 tracking-wide mb-3">THRESHOLD TRIGGER LOG</h3>
-          <div id="eventLog" class="mono text-xs space-y-2 max-h-36 overflow-y-auto text-slate-400">
-            <div class="text-slate-600">System initialized. Monitoring thresholds (&lt;50% or &gt;90%)...</div>
-          </div>
+    <!-- Device Tiles Grid -->
+    <section class="space-y-3">
+      <div class="flex items-center justify-between">
+        <h2 class="text-xs uppercase tracking-wider text-slate-400 font-semibold mono">CONNECTED DEVICES</h2>
+        <span class="text-xs text-slate-500 mono">Tap a tile to focus stream</span>
+      </div>
+      <div id="deviceGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div class="glass rounded-2xl p-5 col-span-full text-center mono text-xs text-slate-500">
+          Waiting for Termux agents to send telemetry...
         </div>
       </div>
+    </section>
 
-      <!-- Right Live Screen Mirror -->
-      <div class="lg:col-span-5">
-        <div class="glass rounded-2xl p-5 h-full flex flex-col">
-          <div class="flex items-center justify-between mb-4">
+    <!-- Selected Device Detail Inspector -->
+    <section id="inspectorSection" class="space-y-4 hidden">
+      <div class="glass rounded-2xl px-6 py-4 flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <span id="detailDot" class="w-3 h-3 rounded-full bg-emerald-400"></span>
+          <div>
             <div class="flex items-center gap-2">
-              <span class="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
-              <h3 class="text-sm font-semibold text-slate-200 tracking-wide">LIVE SCREEN FEED</h3>
+              <h2 id="detailName" class="text-base font-bold text-white">--</h2>
+              <span id="detailIdBadge" class="mono text-[11px] px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-white/10">--</span>
             </div>
-            <span id="lastFrameTime" class="mono text-xs text-slate-500">--:--:--</span>
+            <p id="detailMeta" class="mono text-xs text-slate-400">Uptime: -- | FPS: -- | Last seen: --</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button id="togglePauseBtn" class="mono text-xs px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-white/10">
+            PAUSE STREAM
+          </button>
+          <button id="downloadSnapBtn" class="mono text-xs px-3 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30">
+            SAVE FRAME
+          </button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Metrics + Chart + Logs -->
+        <div class="lg:col-span-7 space-y-6">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="glass rounded-2xl p-5">
+              <div class="flex justify-between items-start">
+                <div>
+                  <p class="text-xs uppercase tracking-wider text-slate-400 font-semibold">CPU Load</p>
+                  <h3 id="detailCpu" class="text-4xl font-bold mono text-white mt-1">0.0%</h3>
+                </div>
+                <span id="detailCpuState" class="mono text-[11px] px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">NOMINAL</span>
+              </div>
+              <div class="w-full bg-slate-800/80 h-2 rounded-full mt-4 overflow-hidden">
+                <div id="detailCpuBar" class="h-full bg-gradient-to-r from-emerald-400 to-cyan-400 transition-all duration-300" style="width: 0%"></div>
+              </div>
+            </div>
+
+            <div class="glass rounded-2xl p-5">
+              <div class="flex justify-between items-start">
+                <div>
+                  <p class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Memory (RAM)</p>
+                  <h3 id="detailRam" class="text-4xl font-bold mono text-white mt-1">0.0%</h3>
+                </div>
+                <span id="detailRamMem" class="mono text-xs text-slate-400">0 / 0 MB</span>
+              </div>
+              <div class="w-full bg-slate-800/80 h-2 rounded-full mt-4 overflow-hidden">
+                <div id="detailRamBar" class="h-full bg-gradient-to-r from-blue-500 to-indigo-400 transition-all duration-300" style="width: 0%"></div>
+              </div>
+            </div>
           </div>
 
-          <div class="flex-1 bg-black/60 rounded-xl border border-slate-800/80 flex items-center justify-center overflow-hidden min-h-[460px] relative">
-            <img id="screenImg" class="max-h-[620px] w-auto object-contain hidden rounded-lg" alt="Live Screen" />
-            <div id="noSignal" class="text-center p-6 space-y-2">
-              <p class="mono text-sm text-slate-500">NO VIDEO SIGNAL</p>
-              <p class="text-xs text-slate-600">Start agent.py in Termux to stream screen</p>
+          <div class="glass rounded-2xl p-5">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-sm font-semibold text-slate-200 tracking-wide">PER-DEVICE TELEMETRY HISTORY</h3>
+              <span id="chartDeviceLabel" class="mono text-xs text-cyan-400">--</span>
+            </div>
+            <div class="h-64">
+              <canvas id="telemetryChart"></canvas>
+            </div>
+          </div>
+
+          <div class="glass rounded-2xl p-5">
+            <h3 class="text-sm font-semibold text-slate-200 tracking-wide mb-3">DEVICE THRESHOLD LOG</h3>
+            <div id="detailLog" class="mono text-xs space-y-2 max-h-36 overflow-y-auto text-slate-400">
+              <div class="text-slate-600">Select a device to inspect threshold events...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live Screen -->
+        <div class="lg:col-span-5">
+          <div class="glass rounded-2xl p-5 h-full flex flex-col">
+            <div class="flex items-center justify-between mb-4">
+              <div class="flex items-center gap-2">
+                <span id="livePulse" class="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
+                <h3 class="text-sm font-semibold text-slate-200 tracking-wide">LIVE SCREEN FEED</h3>
+              </div>
+              <span id="detailFrameTime" class="mono text-xs text-slate-500">--:--:--</span>
+            </div>
+
+            <div class="flex-1 bg-black/60 rounded-xl border border-slate-800/80 flex items-center justify-center overflow-hidden min-h-[460px]">
+              <img id="detailScreen" class="max-h-[620px] w-auto object-contain hidden rounded-lg" alt="Selected Device Screen" />
+              <div id="detailNoScreen" class="text-center p-6 space-y-2">
+                <p class="mono text-sm text-slate-500">NO VIDEO SIGNAL</p>
+                <p class="text-xs text-slate-600">Missing screencap permission or agent offline</p>
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </section>
   </div>
 
   <script>
     const socket = io({ auth: { role: "viewer" } });
 
+    const devicesMap = new Map();
+    const historiesMap = new Map(); // deviceId -> { cpu: [], ram: [] }
+    const logsMap = new Map();      // deviceId -> string[]
+    let selectedDeviceId = null;
+    let streamPaused = false;
+
+    const MAX_POINTS = 40;
     const ctx = document.getElementById("telemetryChart").getContext("2d");
-    const maxPoints = 40;
     const chart = new Chart(ctx, {
       type: "line",
       data: {
-        labels: Array(maxPoints).fill(""),
+        labels: Array(MAX_POINTS).fill(""),
         datasets: [
           {
             label: "CPU %",
-            data: Array(maxPoints).fill(null),
+            data: Array(MAX_POINTS).fill(null),
             borderColor: "#10b981",
             backgroundColor: "rgba(16, 185, 129, 0.12)",
             borderWidth: 2,
@@ -158,7 +199,7 @@
           },
           {
             label: "RAM %",
-            data: Array(maxPoints).fill(null),
+            data: Array(MAX_POINTS).fill(null),
             borderColor: "#6366f1",
             backgroundColor: "rgba(99, 102, 241, 0.12)",
             borderWidth: 2,
@@ -182,78 +223,237 @@
       }
     });
 
-    let lastLogTime = 0;
-    function appendLog(msg, isDanger = false) {
-      const now = Date.now();
-      if (now - lastLogTime < 5000) return;
-      lastLogTime = now;
-      const logBox = document.getElementById("eventLog");
-      const line = document.createElement("div");
-      line.className = isDanger ? "text-rose-400" : "text-amber-400";
-      line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
-      logBox.prepend(line);
-      if (logBox.children.length > 20) logBox.lastChild.remove();
+    function ensureHistory(deviceId) {
+      if (!historiesMap.has(deviceId)) {
+        historiesMap.set(deviceId, {
+          cpu: Array(MAX_POINTS).fill(null),
+          ram: Array(MAX_POINTS).fill(null)
+        });
+      }
+      return historiesMap.get(deviceId);
     }
 
-    socket.on("telemetry_update", (data) => {
-      const dot = document.getElementById("statusDot");
-      const badge = document.getElementById("deviceBadge");
-      const sub = document.getElementById("subStatus");
+    function pushHistory(deviceId, cpu, ram) {
+      const h = ensureHistory(deviceId);
+      h.cpu.push(cpu);
+      h.cpu.shift();
+      h.ram.push(ram);
+      h.ram.shift();
+    }
 
-      if (data.online) {
-        dot.className = "w-3 h-3 rounded-full bg-emerald-400 glow-green transition-all";
-        badge.textContent = data.deviceName || "ONLINE";
-        sub.textContent = "Streaming real-time socket telemetry";
-      } else {
-        dot.className = "w-3 h-3 rounded-full bg-red-500 glow-red transition-all";
-        badge.textContent = "OFFLINE";
-        sub.textContent = "Agent disconnected";
-      }
-
-      const cpu = Number(data.cpu || 0);
-      const ram = Number(data.ram || 0);
-
-      document.getElementById("cpuText").textContent = `${cpu.toFixed(1)}%`;
-      document.getElementById("cpuBar").style.width = `${Math.min(100, cpu)}%`;
-      document.getElementById("ramText").textContent = `${ram.toFixed(1)}%`;
-      document.getElementById("ramBar").style.width = `${Math.min(100, ram)}%`;
-      document.getElementById("ramDetail").textContent = `${data.ramUsedMB || 0} / ${data.ramTotalMB || 0} MB`;
-      document.getElementById("uptimeVal").textContent = data.uptime || "--";
-      document.getElementById("fpsVal").textContent = `${Number(data.fps || 0).toFixed(1)} FPS`;
-
-      const cpuBadge = document.getElementById("cpuAlertBadge");
+    function recordThresholdLog(deviceId, cpu, ram) {
+      let msg = null;
+      let cls = "text-amber-400";
       if (cpu > 90 || ram > 90) {
-        cpuBadge.textContent = "HIGH >90%";
-        cpuBadge.className = "mono text-[11px] px-2 py-1 rounded bg-rose-500/20 text-rose-400 border border-rose-500/30";
-        appendLog(`ALERT (>90%): CPU ${cpu.toFixed(1)}% | RAM ${ram.toFixed(1)}% -> Discord pinged`, true);
+        msg = `[${new Date().toLocaleTimeString()}] HIGH >90%: CPU ${cpu.toFixed(1)}% | RAM ${ram.toFixed(1)}%`;
+        cls = "text-rose-400";
       } else if (cpu < 50 || ram < 50) {
-        cpuBadge.textContent = "LOW <50%";
-        cpuBadge.className = "mono text-[11px] px-2 py-1 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30";
-        appendLog(`ALERT (<50%): CPU ${cpu.toFixed(1)}% | RAM ${ram.toFixed(1)}% -> Discord pinged`, false);
-      } else {
-        cpuBadge.textContent = "NOMINAL (50-90%)";
-        cpuBadge.className = "mono text-[11px] px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+        msg = `[${new Date().toLocaleTimeString()}] LOW <50%: CPU ${cpu.toFixed(1)}% | RAM ${ram.toFixed(1)}%`;
+        cls = "text-amber-400";
+      }
+      if (!msg) return;
+
+      const list = logsMap.get(deviceId) || [];
+      if (list[0]?.text !== msg) {
+        list.unshift({ text: msg, cls });
+        if (list.length > 25) list.pop();
+        logsMap.set(deviceId, list);
+      }
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function renderDeviceGrid() {
+      const grid = document.getElementById("deviceGrid");
+      const all = Array.from(devicesMap.values());
+      const onlineCount = all.filter((d) => d.online).length;
+      document.getElementById("deviceCountVal").textContent = `${onlineCount} / ${all.length}`;
+
+      if (!selectedDeviceId && all.length > 0) {
+        selectedDeviceId = all[0].deviceId;
       }
 
-      // Update Chart
-      chart.data.datasets[0].data.push(cpu);
-      chart.data.datasets[0].data.shift();
-      chart.data.datasets[1].data.push(ram);
-      chart.data.datasets[1].data.shift();
+      if (all.length === 0) {
+        grid.innerHTML = `
+          <div class="glass rounded-2xl p-5 col-span-full text-center mono text-xs text-slate-500">
+            Waiting for Termux agents to send telemetry...
+          </div>`;
+        document.getElementById("inspectorSection").classList.add("hidden");
+        document.getElementById("selectedIdHeader").textContent = "NONE";
+        return;
+      }
+
+      grid.innerHTML = all
+        .map((d) => {
+          const isSelected = d.deviceId === selectedDeviceId;
+          const cpu = Number(d.cpu || 0);
+          const ram = Number(d.ram || 0);
+          const alertFlag = cpu > 90 || ram > 90 || cpu < 50 || ram < 50;
+
+          return `
+            <button
+              type="button"
+              onclick="selectDevice('${escapeHtml(d.deviceId)}')"
+              class="glass device-tile text-left rounded-2xl p-4 flex flex-col justify-between gap-3 ${isSelected ? "device-selected" : ""}"
+            >
+              <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full shrink-0 ${d.online ? "bg-emerald-400" : "bg-rose-500"}"></span>
+                    <span class="font-semibold text-sm text-white truncate">${escapeHtml(d.deviceName || d.deviceId)}</span>
+                  </div>
+                  <p class="mono text-[11px] text-slate-500 truncate mt-0.5">${escapeHtml(d.deviceId)}</p>
+                </div>
+                <span class="mono text-[10px] px-2 py-0.5 rounded shrink-0 ${
+                  !d.online
+                    ? "bg-rose-500/15 text-rose-400"
+                    : alertFlag
+                      ? "bg-amber-500/20 text-amber-300"
+                      : "bg-emerald-500/10 text-emerald-400"
+                }">${!d.online ? "OFFLINE" : alertFlag ? "ALERT" : "LIVE"}</span>
+              </div>
+
+              <div class="grid grid-cols-2 gap-2 mono text-xs">
+                <div class="bg-black/35 rounded-lg p-2 border border-white/5">
+                  <span class="text-[10px] text-slate-500 block">CPU</span>
+                  <span class="text-sm font-bold text-emerald-400">${cpu.toFixed(1)}%</span>
+                </div>
+                <div class="bg-black/35 rounded-lg p-2 border border-white/5">
+                  <span class="text-[10px] text-slate-500 block">RAM</span>
+                  <span class="text-sm font-bold text-indigo-400">${ram.toFixed(1)}%</span>
+                </div>
+              </div>
+
+              <div class="flex items-center justify-between mono text-[11px] text-slate-400">
+                <span>${escapeHtml(d.uptime || "--")}</span>
+                <span class="text-cyan-400">${isSelected ? "VIEWING ▶" : "OPEN STREAM"}</span>
+              </div>
+            </button>
+          `;
+        })
+        .join("");
+
+      renderInspector();
+    }
+
+    function renderInspector() {
+      const section = document.getElementById("inspectorSection");
+      const d = selectedDeviceId ? devicesMap.get(selectedDeviceId) : null;
+      if (!d) {
+        section.classList.add("hidden");
+        return;
+      }
+
+      section.classList.remove("hidden");
+      document.getElementById("selectedIdHeader").textContent = d.deviceId;
+      document.getElementById("detailDot").className = `w-3 h-3 rounded-full ${d.online ? "bg-emerald-400" : "bg-rose-500"}`;
+      document.getElementById("detailName").textContent = d.deviceName || d.deviceId;
+      document.getElementById("detailIdBadge").textContent = d.deviceId;
+      document.getElementById("detailMeta").textContent =
+        `Uptime: ${d.uptime || "--"} | FPS: ${Number(d.fps || 0).toFixed(1)} | Updated: ${d.updatedAt ? new Date(d.updatedAt).toLocaleTimeString() : "--"}`;
+
+      const cpu = Number(d.cpu || 0);
+      const ram = Number(d.ram || 0);
+      document.getElementById("detailCpu").textContent = `${cpu.toFixed(1)}%`;
+      document.getElementById("detailCpuBar").style.width = `${Math.min(100, cpu)}%`;
+      document.getElementById("detailRam").textContent = `${ram.toFixed(1)}%`;
+      document.getElementById("detailRamBar").style.width = `${Math.min(100, ram)}%`;
+      document.getElementById("detailRamMem").textContent = `${d.ramUsedMB || 0} / ${d.ramTotalMB || 0} MB`;
+
+      const stateBadge = document.getElementById("detailCpuState");
+      if (cpu > 90 || ram > 90) {
+        stateBadge.textContent = "HIGH >90%";
+        stateBadge.className = "mono text-[11px] px-2 py-1 rounded bg-rose-500/20 text-rose-400 border border-rose-500/30";
+      } else if (cpu < 50 || ram < 50) {
+        stateBadge.textContent = "LOW <50%";
+        stateBadge.className = "mono text-[11px] px-2 py-1 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30";
+      } else {
+        stateBadge.textContent = "NOMINAL (50-90%)";
+        stateBadge.className = "mono text-[11px] px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+      }
+
+      // Chart data for selected device
+      const h = ensureHistory(d.deviceId);
+      document.getElementById("chartDeviceLabel").textContent = d.deviceId;
+      chart.data.datasets[0].data = [...h.cpu];
+      chart.data.datasets[1].data = [...h.ram];
       chart.update();
 
-      // Update Screen Image
-      if (data.screenBase64) {
-        const img = document.getElementById("screenImg");
-        const noSig = document.getElementById("noSignal");
-        img.src = data.screenBase64.startsWith("data:")
-          ? data.screenBase64
-          : `data:image/jpeg;base64,${data.screenBase64}`;
-        img.classList.remove("hidden");
-        noSig.classList.add("hidden");
-        document.getElementById("lastFrameTime").textContent = new Date().toLocaleTimeString();
+      // Logs for selected device
+      const logs = logsMap.get(d.deviceId) || [];
+      const logEl = document.getElementById("detailLog");
+      logEl.innerHTML = logs.length
+        ? logs.map((item) => `<div class="${item.cls}">${escapeHtml(item.text)}</div>`).join("")
+        : `<div class="text-slate-600">No threshold events recorded for ${escapeHtml(d.deviceId)} yet.</div>`;
+
+      // Screen feed
+      if (!streamPaused) {
+        const img = document.getElementById("detailScreen");
+        const noSig = document.getElementById("detailNoScreen");
+        if (d.screenBase64) {
+          img.src = d.screenBase64.startsWith("data:")
+            ? d.screenBase64
+            : `data:image/jpeg;base64,${d.screenBase64}`;
+          img.classList.remove("hidden");
+          noSig.classList.add("hidden");
+          document.getElementById("detailFrameTime").textContent = new Date().toLocaleTimeString();
+        } else {
+          img.classList.add("hidden");
+          noSig.classList.remove("hidden");
+        }
       }
+    }
+
+    window.selectDevice = function (deviceId) {
+      selectedDeviceId = deviceId;
+      renderDeviceGrid();
+    };
+
+    document.getElementById("togglePauseBtn").addEventListener("click", (e) => {
+      streamPaused = !streamPaused;
+      e.target.textContent = streamPaused ? "RESUME STREAM" : "PAUSE STREAM";
+      if (!streamPaused) renderInspector();
+    });
+
+    document.getElementById("downloadSnapBtn").addEventListener("click", () => {
+      const img = document.getElementById("detailScreen");
+      if (!img.src || img.classList.contains("hidden")) return;
+      const a = document.createElement("a");
+      a.href = img.src;
+      a.download = `${selectedDeviceId || "device"}_${Date.now()}.jpg`;
+      a.click();
+    });
+
+    socket.on("device_update", (d) => {
+      if (!d || !d.deviceId) return;
+      devicesMap.set(d.deviceId, d);
+      const cpu = Number(d.cpu || 0);
+      const ram = Number(d.ram || 0);
+      pushHistory(d.deviceId, cpu, ram);
+      recordThresholdLog(d.deviceId, cpu, ram);
+      renderDeviceGrid();
+    });
+
+    socket.on("devices_snapshot", (list) => {
+      if (!Array.isArray(list)) return;
+      const nextIds = new Set(list.map((x) => x.deviceId));
+      for (const existingId of Array.from(devicesMap.keys())) {
+        if (!nextIds.has(existingId)) devicesMap.delete(existingId);
+      }
+      for (const d of list) {
+        devicesMap.set(d.deviceId, d);
+      }
+      if (selectedDeviceId && !devicesMap.has(selectedDeviceId)) {
+        selectedDeviceId = list[0]?.deviceId || null;
+      }
+      renderDeviceGrid();
     });
   </script>
 </body>
-    </html>
+</html>
