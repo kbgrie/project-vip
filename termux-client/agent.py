@@ -10,10 +10,10 @@ import socketio
 from PIL import Image
 
 # ================= CONFIG =================
-SERVER_URL = "https://YOUR-RENDER-APP.onrender.com"
+SERVER_URL = "https://check-real-time.onrender.com/"
 API_KEY = "ztrongz_secret_key_2026"
-DEVICE_NAME = socket.gethostname() or "Android-Termux"  # Tên hiển thị trên ô, sửa tự do
-DEVICE_ID_FILE = ".device_id"                           # Giữ ID cố định dù đổi DEVICE_NAME
+DEVICE_NAME = socket.gethostname() or "Farm god fruit"  # Tên hiển thị trên ô, sửa tự do
+DEVICE_ID_FILE = "1"                           # Giữ ID cố định dù đổi DEVICE_NAME
 SEND_INTERVAL = 0.8
 JPEG_QUALITY = 55
 MAX_WIDTH = 540
