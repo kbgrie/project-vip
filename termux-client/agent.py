@@ -12,7 +12,7 @@ from PIL import Image
 # ================= CONFIG =================
 SERVER_URL = "https://check-real-time.onrender.com/"
 API_KEY = "ztrongz_secret_key_2026"
-DEVICE_NAME = socket.gethostname() or "Farm god fruit"  # Tên hiển thị trên ô, sửa tự do
+DEVICE_NAME = socket.gethostname() or "Farm got"  # Tên hiển thị trên ô, sửa tự do
 DEVICE_ID_FILE = "1"                           # Giữ ID cố định dù đổi DEVICE_NAME
 SEND_INTERVAL = 0.8
 JPEG_QUALITY = 55
