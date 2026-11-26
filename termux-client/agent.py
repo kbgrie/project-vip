@@ -10,7 +10,7 @@ import socketio
 from PIL import Image
 
 # ================= CONFIG =================
-SERVER_URL = "https://check-real-time.onrender.com/"
+SERVER_URL = "https://check-cpu-online.onrender.com/"
 API_KEY = "ztrongz_secret_key_2026"
 DEVICE_NAME = socket.gethostname() or "Farm got"  # Tên hiển thị trên ô, sửa tự do
 DEVICE_ID_FILE = "1"                           # Giữ ID cố định dù đổi DEVICE_NAME
